@@ -3,7 +3,7 @@
 namespace Afina {
 namespace Allocator {
 
-bool List::is_close_nodes(Node *first_node, Node *second_node) {
+bool List::is_close_nodes(Node *first_node, Node *second_node) const {
     if (first_node == nullptr || second_node == nullptr) {
         throw(std::string("error at List::merge_nodes\n"));
     }
@@ -24,7 +24,7 @@ void List::merge_nodes(Node *first_node, Node *second_node) {
 // node (p -> next -> size >= alloc_size) or pointer on the head
 void *List::search_greater(size_t alloc_size) {
     if (head == nullptr) {
-        throw(std::string("error at List::search_greater\n"));
+        return nullptr;
     }
     if (head->size >= alloc_size) {
         return this;
@@ -42,7 +42,6 @@ void *List::search_greater(size_t alloc_size) {
 void List::delete_node(Node *prev_node, bool is_first) {
     if (is_first) {
         head = head->next;
-
     } else {
         if ((prev_node == nullptr) || ((prev_node->next) == nullptr)) {
             throw std::string("error at List::delete_node\n");
@@ -51,12 +50,39 @@ void List::delete_node(Node *prev_node, bool is_first) {
     }
 }
 
-void List::add_node(Node *prev_node, Node *new_node) {
-    if (prev_node == nullptr) {
-        throw std::string("error at List::add_node\n");
+void List::add_node(Node *prev_node, Node *new_node, bool is_first) {
+    if (is_first) { // head
+        new_node->next = this->head;
+        this->head = new_node;
+    } else {
+        if ((prev_node == nullptr) || (new_node == nullptr)) {
+            throw std::string("error at List::add_node\n");
+        }
+        new_node->next = prev_node->next;
+        prev_node->next = new_node;
     }
-    new_node->next = prev_node->next;
-    prev_node->next = new_node;
+}
+
+void List::correct_border() {
+    if (this->head != nullptr) {
+        auto q = this->head;
+        if (q->next == nullptr) {
+            if (q->size >= sizeof(Node) + sizeof(Descriptor)) {
+                q->size -= sizeof(Descriptor);
+            } else {
+                this->head = nullptr;
+            }
+        } else {
+            while (q->next->next != nullptr) {
+                q++;
+            }
+            if (q->next->size >= sizeof(Node) + sizeof(Descriptor)) {
+                q->next->size -= sizeof(Descriptor);
+            } else {
+                q->next = nullptr;
+            }
+        }
+    }
 }
 
 } // namespace Allocator

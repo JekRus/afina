@@ -1,20 +1,15 @@
-#include <afina/allocator/Simple.h>
-
-#include <afina/allocator/Pointer.h>
-
-#include <afina/allocator/Error.h>
-
-#include <afina/allocator/List.h>
-
 #include <afina/allocator/Descriptor.h>
-
+#include <afina/allocator/Error.h>
+#include <afina/allocator/List.h>
+#include <afina/allocator/Pointer.h>
+#include <afina/allocator/Simple.h>
 #include <cstring>
 
 namespace Afina {
 namespace Allocator {
 
 Simple::Simple(void *base, size_t size) : _base(base), _base_len(size) {
-    Node first_node{size - sizeof(List) - sizeof(int) - 2 * sizeof(Descriptor), nullptr};
+    Node first_node{size - sizeof(List) - sizeof(int) - sizeof(Descriptor) - sizeof(Node), nullptr};
     Node *node_p = static_cast<Node *>(_base);
     *node_p = first_node;
     List freespace_list(node_p);
@@ -24,14 +19,12 @@ Simple::Simple(void *base, size_t size) : _base(base), _base_len(size) {
 }
 
 Pointer Simple::alloc(size_t N) {
-    void *server_p = static_cast<void *>(static_cast<uint8_t *>(_base) + (_base_len - sizeof(List) - sizeof(int)));
-
-    Descriptor *descriptor_addr;
+    void *descriptor_count =
+        static_cast<void *>(static_cast<uint8_t *>(_base) + (_base_len - sizeof(List) - sizeof(int)));
     List *lst_p = reinterpret_cast<List *>(static_cast<uint8_t *>(_base) + (_base_len - sizeof(List)));
     if (N < sizeof(Node)) {
         N = sizeof(Node);
     }
-    Descriptor descriptor{nullptr, N};
     if (lst_p->head == nullptr) {
         throw AllocError(AllocErrorType::NoMemory, std::string("not enough memory\n"));
     }
@@ -45,17 +38,18 @@ Pointer Simple::alloc(size_t N) {
     }
     Node *head = lst_p->head;
     bool is_new_space = false;
+    Descriptor descriptor{nullptr, N};
+    Descriptor *descriptor_addr;
     // 2 частных случая: первое звено списка либо любое другое
     if (reinterpret_cast<List *>(p) == lst_p) {
         descriptor.ptr = static_cast<void *>(head);
-        descriptor_addr = descriptor.add_descriptor(static_cast<int *>(server_p), is_new_space);
+        descriptor_addr = descriptor.add_descriptor(static_cast<int *>(descriptor_count), is_new_space);
         auto old_node_size = head->size;
         if (old_node_size >= sizeof(Node) + N) {
             Node *new_node_p = reinterpret_cast<Node *>(reinterpret_cast<uint8_t *>(head) + N);
             lst_p->delete_node(nullptr, true);
-            new_node_p->next = head->next;
             new_node_p->size = old_node_size - N;
-            lst_p->head = new_node_p;
+            lst_p->add_node(nullptr, new_node_p, true);
         } else {
             lst_p->delete_node(nullptr, true);
         }
@@ -63,35 +57,19 @@ Pointer Simple::alloc(size_t N) {
         auto node_p = static_cast<Node *>(p);
         auto old_node_size = node_p->next->size;
         descriptor.ptr = static_cast<void *>(node_p->next);
-        descriptor_addr = descriptor.add_descriptor(static_cast<int *>(server_p), is_new_space);
+        descriptor_addr = descriptor.add_descriptor(static_cast<int *>(descriptor_count), is_new_space);
         if (old_node_size >= sizeof(Node) + N) {
             Node *new_node_p = reinterpret_cast<Node *>(reinterpret_cast<uint8_t *>(node_p->next) + N);
-            lst_p->delete_node(node_p, false);
+            lst_p->delete_node(node_p);
             lst_p->add_node(node_p, new_node_p);
             new_node_p->size = old_node_size - N;
         } else {
-            lst_p->delete_node(node_p, false);
+            lst_p->delete_node(node_p);
         }
     }
     //корректировка правой границы памяти
-    if (is_new_space && (lst_p->head != nullptr)) {
-        auto q = lst_p->head;
-        if (q->next == nullptr) {
-            if (q->size >= sizeof(Node) + sizeof(Descriptor)) {
-                q->size -= sizeof(Descriptor);
-            } else {
-                lst_p->head = nullptr;
-            }
-        } else {
-            while (q->next->next != nullptr) {
-                q++;
-            }
-            if (q->next->size >= sizeof(Node) + sizeof(Descriptor)) {
-                q->next->size -= sizeof(Descriptor);
-            } else {
-                q->next = nullptr;
-            }
-        }
+    if (is_new_space) {
+        lst_p->correct_border();
     }
     return Pointer(descriptor_addr);
 }
@@ -187,7 +165,8 @@ void Simple::free(Pointer &p) {
 }
 
 void Simple::defrag() {
-    void *server_p = static_cast<void *>(static_cast<uint8_t *>(_base) + (_base_len - sizeof(List) - sizeof(int)));
+    void *descriptor_count =
+        static_cast<void *>(static_cast<uint8_t *>(_base) + (_base_len - sizeof(List) - sizeof(int)));
     List *lst_p = reinterpret_cast<List *>(static_cast<uint8_t *>(_base) + (_base_len - sizeof(List)));
     auto &head = lst_p->head;
     if (head == nullptr) {
@@ -198,7 +177,7 @@ void Simple::defrag() {
             lst_p->merge_nodes(head, head->next);
         } else {
             void *p = reinterpret_cast<uint8_t *>(head) + head->size;
-            Descriptor *descriptor_addr = Descriptor::find_descriptor_addr(static_cast<int *>(server_p), p);
+            Descriptor *descriptor_addr = Descriptor::find_descriptor_addr(static_cast<int *>(descriptor_count), p);
             if (descriptor_addr != nullptr) {
                 Node tmp = *head;
                 std::memmove(head, descriptor_addr->ptr, descriptor_addr->size);
@@ -211,7 +190,7 @@ void Simple::defrag() {
         }
     }
     void *p = reinterpret_cast<uint8_t *>(head) + head->size;
-    Descriptor *descriptor_addr = Descriptor::find_descriptor_addr(static_cast<int *>(server_p), p);
+    Descriptor *descriptor_addr = Descriptor::find_descriptor_addr(static_cast<int *>(descriptor_count), p);
     while (descriptor_addr != nullptr) {
         Node tmp = *head;
         std::memmove(head, descriptor_addr->ptr, descriptor_addr->size);
@@ -219,7 +198,7 @@ void Simple::defrag() {
         head = reinterpret_cast<Node *>(static_cast<uint8_t *>(descriptor_addr->ptr) + descriptor_addr->size);
         *head = tmp;
         p = reinterpret_cast<uint8_t *>(head) + head->size;
-        descriptor_addr = Descriptor::find_descriptor_addr(static_cast<int *>(server_p), p);
+        descriptor_addr = Descriptor::find_descriptor_addr(static_cast<int *>(descriptor_count), p);
     }
     return;
 }
