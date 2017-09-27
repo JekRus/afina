@@ -7,18 +7,19 @@ namespace Afina {
 namespace Allocator {
 
 enum class AllocErrorType {
-    InvalidFree,
-    NoMemory,
+  InvalidFree,
+  NoMemory,
 };
 
 class AllocError : std::runtime_error {
 private:
-    AllocErrorType type;
+  AllocErrorType type;
 
 public:
-    AllocError(AllocErrorType _type, std::string message) : runtime_error(message), type(_type) {}
+  AllocError(AllocErrorType _type, std::string message)
+      : runtime_error(message), type(_type) {}
 
-    AllocErrorType getType() const { return type; }
+  AllocErrorType getType() const { return type; }
 };
 
 } // namespace Allocator

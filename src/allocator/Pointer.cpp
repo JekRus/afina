@@ -3,12 +3,51 @@
 namespace Afina {
 namespace Allocator {
 
-Pointer::Pointer() {}
-Pointer::Pointer(const Pointer &) {}
-Pointer::Pointer(Pointer &&) {}
+Pointer::Pointer() = default;
+Pointer::Pointer(Descriptor *d) : descriptor(d) {}
+Pointer::Pointer(const Pointer &ptr) { descriptor = ptr.descriptor; }
 
-Pointer &Pointer::operator=(const Pointer &) { return *this; }
-Pointer &Pointer::operator=(Pointer &&) { return *this; }
+Pointer::Pointer(Pointer &&ptr) {
+  descriptor = ptr.descriptor;
+  ptr.descriptor = nullptr;
+}
+
+Pointer &Pointer::operator=(const Pointer &ptr) {
+  descriptor = ptr.descriptor;
+  return *this;
+}
+
+Pointer &Pointer::operator=(Pointer &&ptr) {
+  Descriptor *tmp = this->descriptor;
+  this->descriptor = ptr.descriptor;
+  ptr.descriptor = tmp;
+  return *this;
+}
+
+Pointer::~Pointer() { descriptor = nullptr; }
+
+void *Pointer::get() const {
+  if (descriptor != nullptr) {
+    return descriptor->ptr;
+  } else {
+    return nullptr;
+  }
+}
+
+size_t Pointer::getsize() const {
+  if (descriptor != nullptr) {
+    return descriptor->size;
+  } else {
+    return 0;
+  }
+}
+
+void Pointer::clear() {
+  if (descriptor != nullptr) {
+    descriptor->ptr = nullptr;
+    descriptor->size = 0;
+  }
+}
 
 } // namespace Allocator
 } // namespace Afina
