@@ -11,23 +11,23 @@ class Simple;
 
 class Pointer {
 public:
-  Pointer();
-  Pointer(Descriptor *);
+    Pointer();
+    Pointer(Descriptor *);
 
-  Pointer(const Pointer &);
-  Pointer(Pointer &&);
+    Pointer(const Pointer &);
+    Pointer(Pointer &&);
 
-  Pointer &operator=(const Pointer &);
-  Pointer &operator=(Pointer &&);
+    Pointer &operator=(const Pointer &);
+    Pointer &operator=(Pointer &&);
 
-  ~Pointer();
+    ~Pointer();
 
-  void *get() const;
-  size_t getsize() const;
-  void clear();
+    void *get() const;
+    size_t getsize() const;
+    void clear();
 
 private:
-  Descriptor *descriptor;
+    Descriptor *descriptor;
 };
 
 } // namespace Allocator

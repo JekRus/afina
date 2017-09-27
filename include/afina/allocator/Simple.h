@@ -25,16 +25,16 @@ class Pointer;
 
 class Simple {
 public:
-  Simple(void *base, const size_t size);
-  Pointer alloc(size_t N);
-  void realloc(Pointer &p, size_t N);
-  void free(Pointer &p);
-  void defrag();
-  std::string dump() const;
+    Simple(void *base, const size_t size);
+    Pointer alloc(size_t N);
+    void realloc(Pointer &p, size_t N);
+    void free(Pointer &p);
+    void defrag();
+    std::string dump() const;
 
 private:
-  void *_base;
-  const size_t _base_len;
+    void *_base;
+    const size_t _base_len;
 };
 
 } // namespace Allocator
