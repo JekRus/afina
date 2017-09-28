@@ -6,12 +6,18 @@
 namespace Afina {
 namespace Allocator {
 
-struct Descriptor {
+class Descriptor {
+public:
     Descriptor() : ptr(nullptr), size(0) {}
     Descriptor(void *p, size_t s) : ptr(p), size(s) {}
     Descriptor *add_descriptor(int *descriptor_count, bool &is_new_space);
-    static Descriptor *find_descriptor_addr(int *descriptor_count, void *descriptor_ptr);
+    static Descriptor *find_descriptor(int *descriptor_count, void *descriptor_ptr);
+    void *get_ptr() const;
+    size_t get_size() const;
+    void set_ptr(void *p);
+    void set_size(size_t s);
 
+private:
     void *ptr;
     size_t size;
 };

@@ -28,7 +28,7 @@ Pointer::~Pointer() { descriptor = nullptr; }
 
 void *Pointer::get() const {
     if (descriptor != nullptr) {
-        return descriptor->ptr;
+        return descriptor->get_ptr();
     } else {
         return nullptr;
     }
@@ -36,7 +36,7 @@ void *Pointer::get() const {
 
 size_t Pointer::getsize() const {
     if (descriptor != nullptr) {
-        return descriptor->size;
+        return descriptor->get_size();
     } else {
         return 0;
     }
@@ -44,8 +44,8 @@ size_t Pointer::getsize() const {
 
 void Pointer::clear() {
     if (descriptor != nullptr) {
-        descriptor->ptr = nullptr;
-        descriptor->size = 0;
+        descriptor->set_ptr(nullptr);
+        descriptor->set_size(0);
     }
 }
 

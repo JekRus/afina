@@ -1,6 +1,6 @@
 #ifndef AFINA_ALLOCATOR_LIST_H
 #define AFINA_ALLOCATOR_LIST_H
-#include <afina/allocator/Descriptor.h>
+
 #include <cstddef>
 #include <string>
 
@@ -21,7 +21,10 @@ public:
     void correct_border();
     bool is_close_nodes(Node *first_node, Node *second_node) const;
     void merge_nodes(Node *first_node, Node *second_node);
+    Node *get_head() const;
+    void set_head(Node *h);
 
+private:
     Node *head;
 };
 

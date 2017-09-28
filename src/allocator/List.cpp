@@ -1,3 +1,4 @@
+#include <afina/allocator/Descriptor.h>
 #include <afina/allocator/List.h>
 
 namespace Afina {
@@ -5,15 +6,14 @@ namespace Allocator {
 
 Node *List::search_greater(size_t alloc_size) {
     Node *p = head->next;
-    if(p == nullptr) {
-		return nullptr;
-	}
-	else if(p->size >= alloc_size) {
-		return head;
-	} 
+    if (p == nullptr) {
+        return nullptr;
+    } else if (p->size >= alloc_size) {
+        return head;
+    }
     while (p->next != nullptr) {
         if (p->next->size >= alloc_size) {
-			return p;
+            return p;
         }
         p = p->next;
     }
@@ -55,12 +55,12 @@ void List::merge_nodes(Node *first_node, Node *second_node) {
 
 void List::correct_border() {
     Node *p = head;
-    if(p == nullptr) {
-		throw(std::string("error at List::correct_border\n"));
-	}
-	if(p->next == nullptr) {
-		return;
-	}
+    if (p == nullptr) {
+        throw(std::string("error at List::correct_border\n"));
+    }
+    if (p->next == nullptr) {
+        return;
+    }
     while (p->next->next != nullptr) {
         p++;
     }
@@ -70,6 +70,10 @@ void List::correct_border() {
         p->next = nullptr;
     }
 }
+
+Node *List::get_head() const { return head; }
+
+void List::set_head(Node *h) { head = h; }
 
 } // namespace Allocator
 } // namespace Afina
