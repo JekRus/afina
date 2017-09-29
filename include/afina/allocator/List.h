@@ -8,6 +8,9 @@ namespace Afina {
 namespace Allocator {
 
 struct Node {
+	Node() : size(0), next(nullptr) {}
+	Node(size_t s, Node *p) : size(s), next(p) {}
+
     size_t size;
     Node *next;
 };

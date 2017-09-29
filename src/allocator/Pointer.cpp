@@ -3,7 +3,7 @@
 namespace Afina {
 namespace Allocator {
 
-Pointer::Pointer() = default;
+Pointer::Pointer() : descriptor(nullptr) {}
 Pointer::Pointer(Descriptor *d) : descriptor(d) {}
 Pointer::Pointer(const Pointer &ptr) { descriptor = ptr.descriptor; }
 
