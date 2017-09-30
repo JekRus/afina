@@ -10,6 +10,7 @@ class Descriptor {
 public:
     Descriptor() : ptr(nullptr), size(0) {}
     Descriptor(void *p, size_t s) : ptr(p), size(s) {}
+
     Descriptor *add_descriptor(int *descriptor_count, bool &is_new_space);
     static Descriptor *find_descriptor(int *descriptor_count, void *descriptor_ptr);
     void *get_ptr() const;
@@ -22,6 +23,6 @@ private:
     size_t size;
 };
 
-} // namespace Afina
 } // namespace Allocator
+} // namespace Afina
 #endif // AFINA_ALLOCATOR_DESCRIPTOR_H

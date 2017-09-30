@@ -8,8 +8,8 @@ namespace Afina {
 namespace Allocator {
 
 struct Node {
-	Node() : size(0), next(nullptr) {}
-	Node(size_t s, Node *p) : size(s), next(p) {}
+    Node() : size(0), next(nullptr) {}
+    Node(size_t s, Node *p) : size(s), next(p) {}
 
     size_t size;
     Node *next;
@@ -18,6 +18,7 @@ struct Node {
 class List {
 public:
     List(Node *p = nullptr) : head(p) {}
+
     Node *search_greater(size_t alloc_size);
     void delete_node(Node *prev_node);
     void add_node(Node *prev_node, Node *new_node);
@@ -31,6 +32,6 @@ private:
     Node *head;
 };
 
-} // namespace Afina
 } // namespace Allocator
+} // namespace Afina
 #endif // AFINA_ALLOCATOR_LIST_H
