@@ -1,9 +1,9 @@
 #ifndef AFINA_STORAGE_MAP_BASED_GLOBAL_LOCK_IMPL_H
 #define AFINA_STORAGE_MAP_BASED_GLOBAL_LOCK_IMPL_H
 
-#include <map>
-#include <list>
 #include <algorithm>
+#include <list>
+#include <map>
 #include <mutex>
 #include <string>
 
