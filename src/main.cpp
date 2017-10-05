@@ -75,9 +75,13 @@ int main(int argc, char **argv) {
 
     // daemon and pid options
     if (options.count("daemon") > 0) {
-        if (fork()) {
-            return 0;
-        }
+        pid_t k;
+        if ((k = fork()) < 0) {
+            std::cerr << "Error. fork() failed\n";
+            return 1;
+        } else if(k > 0) {
+			return 0;
+		}
         // child
         if (setsid() == -1) {
             std::cerr << "Error. Cannot create new session\n";
