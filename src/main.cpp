@@ -1,8 +1,8 @@
 #include <chrono>
 #include <cstring>
 #include <fcntl.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <stdio.h>
 #include <unistd.h>
@@ -40,11 +40,11 @@ void timer_handler(uv_timer_t *handle) {
 }
 
 int main(int argc, char **argv) {
-	// Build version
+    // Build version
     // TODO: move into Version.h as a function
     std::stringstream app_string;
     app_string << "Afina " << Afina::Version_Major << "." << Afina::Version_Minor << "." << Afina::Version_Patch;
-	if (Afina::Version_SHA.size() > 0) {
+    if (Afina::Version_SHA.size() > 0) {
         app_string << "-" << Afina::Version_SHA;
     }
 
@@ -73,9 +73,9 @@ int main(int argc, char **argv) {
     Application app;
     std::cout << "Starting " << app_string.str() << std::endl;
 
-    //daemon and pid options
-    if(options.count("daemon") > 0) {
-		if (fork()) {
+    // daemon and pid options
+    if (options.count("daemon") > 0) {
+        if (fork()) {
             return 0;
         }
         // child
@@ -89,17 +89,16 @@ int main(int argc, char **argv) {
         }
     }
     try {
-		if(options.count("pid") > 0) {
-			std::fstream fs;
-			fs.open(options["pid"].as<std::string>(), std::fstream::out | std::fstream::trunc);
-			fs << getpid();
-			fs.close();
-		}
-	} catch (std::exception &e) {
+        if (options.count("pid") > 0) {
+            std::fstream fs;
+            fs.open(options["pid"].as<std::string>(), std::fstream::out | std::fstream::trunc);
+            fs << getpid();
+            fs.close();
+        }
+    } catch (std::exception &e) {
         std::cerr << "Error" << e.what() << std::endl;
     }
-    
-    
+
     // Build new storage instance
     std::string storage_type = "map_global";
     if (options.count("storage") > 0) {
