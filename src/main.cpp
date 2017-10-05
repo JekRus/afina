@@ -2,6 +2,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <stdio.h>
 #include <unistd.h>
@@ -39,12 +40,10 @@ void timer_handler(uv_timer_t *handle) {
 }
 
 int main(int argc, char **argv) {
-
-    // Build version
+	// Build version
     // TODO: move into Version.h as a function
     std::stringstream app_string;
     app_string << "Afina " << Afina::Version_Major << "." << Afina::Version_Minor << "." << Afina::Version_Patch;
-   
 	if (Afina::Version_SHA.size() > 0) {
         app_string << "-" << Afina::Version_SHA;
     }
@@ -56,6 +55,8 @@ int main(int argc, char **argv) {
         // and simplify validation below
         options.add_options()("s,storage", "Type of storage service to use", cxxopts::value<std::string>());
         options.add_options()("n,network", "Type of network service to use", cxxopts::value<std::string>());
+        options.add_options()("d,daemon", "Run as daemon");
+        options.add_options()("p,pid", "Write pid in file", cxxopts::value<std::string>());
         options.add_options()("h,help", "Print usage info");
         options.parse(argc, argv);
 
@@ -72,6 +73,33 @@ int main(int argc, char **argv) {
     Application app;
     std::cout << "Starting " << app_string.str() << std::endl;
 
+    //daemon and pid options
+    if(options.count("daemon") > 0) {
+		if (fork()) {
+            return 0;
+        }
+        // child
+        if (setsid() == -1) {
+            std::cerr << "Error. Cannot create new session\n";
+            return 1;
+        }
+        if (close(STDIN_FILENO) || close(STDOUT_FILENO) || close(STDERR_FILENO)) {
+            std::cerr << "Error. Cannot close STDIN/STDOUT\n";
+            return 1;
+        }
+    }
+    try {
+		if(options.count("pid") > 0) {
+			std::fstream fs;
+			fs.open(options["pid"].as<std::string>(), std::fstream::out | std::fstream::trunc);
+			fs << getpid();
+			fs.close();
+		}
+	} catch (std::exception &e) {
+        std::cerr << "Error" << e.what() << std::endl;
+    }
+    
+    
     // Build new storage instance
     std::string storage_type = "map_global";
     if (options.count("storage") > 0) {
