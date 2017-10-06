@@ -69,10 +69,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Start boot sequence
-    Application app;
-    std::cout << "Starting " << app_string.str() << std::endl;
-
     // daemon and pid options
     if (options.count("daemon") > 0) {
         pid_t k;
@@ -101,7 +97,11 @@ int main(int argc, char **argv) {
         }
     } catch (std::exception &e) {
         std::cerr << "Error" << e.what() << std::endl;
-    }
+    }    
+    
+    // Start boot sequence
+    Application app;
+    std::cout << "Starting " << app_string.str() << std::endl;
 
     // Build new storage instance
     std::string storage_type = "map_global";
