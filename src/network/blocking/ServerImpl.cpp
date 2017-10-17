@@ -17,7 +17,18 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
+#include <afina/execute/Command.h>
+#include <afina/execute/Add.h>
+#include <afina/execute/Append.h>
+#include <afina/execute/Delete.h>
+#include <afina/execute/Get.h>
+#include <afina/execute/InsertCommand.h>
+#include <afina/execute/Replace.h>
+#include <afina/execute/Set.h>
 #include <afina/Storage.h>
+#include "../src/protocol/Parser.h"
+
+#define BUFFSIZE 4096
 
 namespace Afina {
 namespace Network {
@@ -32,6 +43,17 @@ void *ServerImpl::RunAcceptorProxy(void *p) {
     }
     return 0;
 }
+
+void *ServerImpl::RunConnectionThread(void *p) {
+    Thread_args args = *(reinterpret_cast<Thread_args *>(p));
+    try {
+        args.srv->RunConnection(args.client_descriptor);
+    } catch (std::runtime_error &ex) {
+        std::cerr << "Connection fails: " << ex.what() << std::endl;
+    }
+    return 0;
+}
+
 
 // See Server.h
 ServerImpl::ServerImpl(std::shared_ptr<Afina::Storage> ps) : Server(ps) {}
@@ -97,6 +119,7 @@ void ServerImpl::Stop() {
 void ServerImpl::Join() {
     std::cout << "network debug: " << __PRETTY_FUNCTION__ << std::endl;
     pthread_join(accept_thread, 0);
+    std::cout << "Joined\n";
 }
 
 // See Server.h
@@ -160,6 +183,7 @@ void ServerImpl::RunAcceptor() {
     int client_socket;
     struct sockaddr_in client_addr;
     socklen_t sinSize = sizeof(struct sockaddr_in);
+    
     while (running.load()) {
         std::cout << "network debug: waiting for connection..." << std::endl;
 
@@ -172,22 +196,79 @@ void ServerImpl::RunAcceptor() {
 
         // TODO: Start new thread and process data from/to connection
         {
-            std::string msg = "TODO: start new thread and process memcached protocol instead";
-            if (send(client_socket, msg.data(), msg.size(), 0) <= 0) {
-                close(client_socket);
-                close(server_socket);
-                throw std::runtime_error("Socket send() failed");
-            }
-            close(client_socket);
-        }
+            if(connections.size() < max_workers) {
+				connections.push_back(0);
+				Thread_args args{this, client_socket};
+				if (pthread_create(&connections.back(), NULL, ServerImpl::RunConnectionThread, &args) < 0) {
+					close(server_socket);
+					close(client_socket);
+					throw std::runtime_error("Could not create connection thread");
+				}
+			}
+			else {
+				std::cout << "Connections limit reached\n";
+				close(client_socket);
+			}
+       }
     }
-
     // Cleanup on exit...
     close(server_socket);
+    for(auto thread: connections) {
+		pthread_join(thread, NULL);
+	}
 }
 
 // See Server.h
-void ServerImpl::RunConnection() { std::cout << "network debug: " << __PRETTY_FUNCTION__ << std::endl; }
+void ServerImpl::RunConnection(const int client_socket) { 
+	std::cout << "network debug: " << __PRETTY_FUNCTION__ << std::endl; 
+	
+	Afina::Protocol::Parser parser;
+	char buf[BUFFSIZE];
+	int read_state;
+	bool is_connection = true;
+	
+	while(running.load() && is_connection) {
+		std::memset(buf, 0, BUFFSIZE);
+		if((read_state = read(client_socket, buf, BUFFSIZE)) > 0) {
+			size_t parsed;
+			if(parser.Parse(buf, BUFFSIZE, parsed)) {
+				uint32_t body_size;
+				std::unique_ptr<Execute::Command> command;
+				if(command = parser.Build(body_size)) {
+					if(buf + parsed + body_size >= buf + BUFFSIZE) {
+						throw std::runtime_error("Buffer reading error");
+					}
+					const std::string args(buf + parsed, body_size);
+					std::string out;
+					try {
+						command->Execute(*pStorage, args, out);
+					}
+					catch(std::exception &e) {
+						out = "SERVER_ERROR: " + std::string(e.what()) + "\r\n";
+					}
+					catch(...) {
+						out = "SERVER_ERROR: unknown error\r\n";
+					}
+					if(write(client_socket, out.c_str(), out.size()) == -1) {
+						is_connection = false;
+					}
+				}
+				parser.Reset();
+			}
+		}
+		else if(read_state < 0) {
+			throw std::runtime_error("Client socket reading error");
+		}
+		else { //read_state == 0
+			//std::string test = "1";
+			//if(write(client_socket, test.c_str(), test.size()) == -1) {
+			is_connection = false;
+			//}
+		}
+	}
+	std::cout << "Connection closed\n";
+	close(client_socket);
+}
 
 } // namespace Blocking
 } // namespace Network

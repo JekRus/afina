@@ -38,10 +38,11 @@ protected:
     /**
      * Methos is running for each connection
      */
-    void RunConnection();
+    void RunConnection(const int);
 
 private:
     static void *RunAcceptorProxy(void *p);
+    static void *RunConnectionThread(void *p);
 
     // Atomic flag to notify threads when it is time to stop. Note that
     // flag must be atomic in order to safely publisj changes cross thread
@@ -64,6 +65,12 @@ private:
     // Threads that are processing connection data, permits
     // access only from inside of accept_thread
     std::vector<pthread_t> connections;
+};
+
+
+struct Thread_args {
+	ServerImpl* srv;
+	int client_descriptor;
 };
 
 } // namespace Blocking
