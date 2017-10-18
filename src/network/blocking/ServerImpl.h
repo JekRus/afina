@@ -2,8 +2,8 @@
 #define AFINA_NETWORK_BLOCKING_SERVER_H
 
 #include <atomic>
-#include <vector>
 #include <pthread.h>
+#include <vector>
 
 #include <afina/network/Server.h>
 
@@ -69,10 +69,9 @@ private:
     int server_socket;
 };
 
-
 struct Thread_args {
-	ServerImpl* srv;
-	int client_descriptor;
+    ServerImpl *srv;
+    int client_descriptor;
 };
 
 } // namespace Blocking

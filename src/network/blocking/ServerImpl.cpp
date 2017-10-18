@@ -18,16 +18,16 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-#include <afina/execute/Command.h>
+#include "../src/protocol/Parser.h"
+#include <afina/Storage.h>
 #include <afina/execute/Add.h>
 #include <afina/execute/Append.h>
+#include <afina/execute/Command.h>
 #include <afina/execute/Delete.h>
 #include <afina/execute/Get.h>
 #include <afina/execute/InsertCommand.h>
 #include <afina/execute/Replace.h>
 #include <afina/execute/Set.h>
-#include <afina/Storage.h>
-#include "../src/protocol/Parser.h"
 
 #define BUFFSIZE 4096
 
@@ -55,7 +55,6 @@ void *ServerImpl::RunConnectionThread(void *p) {
     }
     return 0;
 }
-
 
 // See Server.h
 ServerImpl::ServerImpl(std::shared_ptr<Afina::Storage> ps) : Server(ps) {}
@@ -186,7 +185,7 @@ void ServerImpl::RunAcceptor() {
     int client_socket;
     struct sockaddr_in client_addr;
     socklen_t sinSize = sizeof(struct sockaddr_in);
-    
+
     while (running.load()) {
         std::cout << "network debug: waiting for connection..." << std::endl;
 
@@ -237,10 +236,10 @@ void ServerImpl::RunAcceptor() {
 	}
 }
 
-//Questions:
-//1. How to check if connection is closed?
-//2. Join workers during server's proccess or not?
-//3. How to unblock from accept() when it is time to shut down (server.stop())?
+// Questions:
+// 1. How to check if connection is closed?
+// 2. Join workers during server's proccess or not?
+// 3. How to unblock from accept() when it is time to shut down (server.stop())?
 
 // See Server.h
 void ServerImpl::RunConnection(const int client_socket) { 

@@ -75,9 +75,9 @@ int main(int argc, char **argv) {
         if ((k = fork()) < 0) {
             std::cerr << "Error. fork() failed\n";
             return 1;
-        } else if(k > 0) {
-			return 0;
-		}
+        } else if (k > 0) {
+            return 0;
+        }
         // child
         if (setsid() == -1) {
             std::cerr << "Error. Cannot create new session\n";
@@ -97,8 +97,8 @@ int main(int argc, char **argv) {
         }
     } catch (std::exception &e) {
         std::cerr << "Error" << e.what() << std::endl;
-    }    
-    
+    }
+
     // Start boot sequence
     Application app;
     std::cout << "Starting " << app_string.str() << std::endl;
