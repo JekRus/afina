@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <algorithm>
 
 #include <pthread.h>
 #include <signal.h>
@@ -114,6 +115,7 @@ void ServerImpl::Start(uint32_t port, uint16_t n_workers) {
 void ServerImpl::Stop() {
     std::cout << "network debug: " << __PRETTY_FUNCTION__ << std::endl;
     running.store(false);
+    shutdown(server_socket, SHUT_RDWR);
 }
 
 // See Server.h
@@ -147,7 +149,7 @@ void ServerImpl::RunAcceptor() {
     // - Family: IPv4
     // - Type: Full-duplex stream (reliable)
     // - Protocol: TCP
-    int server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (server_socket == -1) {
         throw std::runtime_error("Failed to open socket");
     }
@@ -191,16 +193,32 @@ void ServerImpl::RunAcceptor() {
         // When an incoming connection arrives, accept it. The call to accept() blocks until
         // the incoming connection arrives
         if ((client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &sinSize)) == -1) {
-            close(server_socket);
-            throw std::runtime_error("Socket accept() failed");
+            if(running.load()) {
+				throw std::runtime_error("Socket accept() failed");
+			}
+			else {
+				close(server_socket);
+				for(auto thread: connections) {
+					pthread_join(thread, 0);
+				}
+				return;
+			}
+            
         }
 
         // TODO: Start new thread and process data from/to connection
         {
+            auto it = connections.begin();
+            while(it != connections.end()) {
+				if(pthread_kill(*it, 0) != 0) {
+					pthread_join(*it, 0);
+					it = connections.erase(it);
+				}
+			}
             if(connections.size() < max_workers) {
 				connections.push_back(0);
 				Thread_args args{this, client_socket};
-				if (pthread_create(&connections.back(), NULL, ServerImpl::RunConnectionThread, &args) < 0) {
+				if (pthread_create(&connections.back(), NULL, ServerImpl::RunConnectionThread, &args) != 0) {
 					close(server_socket);
 					close(client_socket);
 					throw std::runtime_error("Could not create connection thread");
@@ -215,7 +233,7 @@ void ServerImpl::RunAcceptor() {
     // Cleanup on exit...
     close(server_socket);
     for(auto thread: connections) {
-		pthread_join(thread, NULL);
+		pthread_join(thread, 0);
 	}
 }
 
@@ -236,8 +254,18 @@ void ServerImpl::RunConnection(const int client_socket) {
 	while(running.load() && is_connection) {
 		std::memset(buf, 0, BUFFSIZE);
 		if((read_state = read(client_socket, buf, BUFFSIZE)) > 0) {
+			std::cout << buf << std::endl;
 			size_t parsed;
-			if(parser.Parse(buf, BUFFSIZE, parsed)) {
+			bool is_parsed;
+			try {
+				is_parsed = parser.Parse(buf, BUFFSIZE, parsed);
+			}
+			catch(std::exception &e) {
+				if(write(client_socket, e.what(), strlen(e.what())) == -1) {
+					is_connection = false;
+				}
+			}
+			if(is_parsed) {
 				uint32_t body_size;
 				std::unique_ptr<Execute::Command> command;
 				if(command = parser.Build(body_size)) {
@@ -265,11 +293,8 @@ void ServerImpl::RunConnection(const int client_socket) {
 		else if(read_state < 0) {
 			throw std::runtime_error("Client socket reading error");
 		}
-		else { //read_state == 0
-			//std::string test = "1";
-			//if(write(client_socket, test.c_str(), test.size()) == -1) {
+		else {
 			is_connection = false;
-			//}
 		}
 	}
 	std::cout << "Connection closed\n";

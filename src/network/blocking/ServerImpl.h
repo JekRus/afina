@@ -65,6 +65,8 @@ private:
     // Threads that are processing connection data, permits
     // access only from inside of accept_thread
     std::vector<pthread_t> connections;
+    
+    int server_socket;
 };
 
 
