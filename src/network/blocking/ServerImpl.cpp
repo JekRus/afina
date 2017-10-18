@@ -50,6 +50,7 @@ void *ServerImpl::RunConnectionThread(void *p) {
         args.srv->RunConnection(args.client_descriptor);
     } catch (std::runtime_error &ex) {
         std::cerr << "Connection fails: " << ex.what() << std::endl;
+        close(args.client_descriptor);
     }
     return 0;
 }
@@ -217,6 +218,11 @@ void ServerImpl::RunAcceptor() {
 		pthread_join(thread, NULL);
 	}
 }
+
+//Questions:
+//1. How to check if connection is closed?
+//2. Join workers during server's proccess or not?
+//3. How to unblock from accept() when it is time to shut down (server.stop())?
 
 // See Server.h
 void ServerImpl::RunConnection(const int client_socket) { 
