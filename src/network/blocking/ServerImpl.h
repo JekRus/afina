@@ -2,8 +2,10 @@
 #define AFINA_NETWORK_BLOCKING_SERVER_H
 
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <pthread.h>
-#include <vector>
+#include <unordered_set>
 
 #include <afina/network/Server.h>
 
@@ -62,9 +64,17 @@ private:
     // Read-only
     uint32_t listen_port;
 
+    // Mutex used to access connections list
+    std::mutex connections_mutex;
+
+    // Conditional variable used to notify waiters about empty
+    // connections list
+    std::condition_variable connections_cv;
+
     // Threads that are processing connection data, permits
     // access only from inside of accept_thread
-    std::vector<pthread_t> connections;
+
+    std::unordered_set<pthread_t> connections;
     
     int server_socket;
 };

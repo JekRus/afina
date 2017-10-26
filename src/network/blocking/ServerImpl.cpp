@@ -231,73 +231,45 @@ void ServerImpl::RunAcceptor() {
     }
     // Cleanup on exit...
     close(server_socket);
-    for(auto thread: connections) {
-		pthread_join(thread, 0);
-	}
+    // Wait until for all connections to be complete
+    std::unique_lock<std::mutex> __lock(connections_mutex);
+    while (!connections.empty()) {
+        connections_cv.wait(__lock);
+    }
 }
 
-// Questions:
-// 1. How to check if connection is closed?
-// 2. Join workers during server's proccess or not?
-// 3. How to unblock from accept() when it is time to shut down (server.stop())?
-
 // See Server.h
-void ServerImpl::RunConnection(const int client_socket) { 
-	std::cout << "network debug: " << __PRETTY_FUNCTION__ << std::endl; 
-	
-	Afina::Protocol::Parser parser;
-	char buf[BUFFSIZE];
-	int read_state;
-	bool is_connection = true;
-	
-	while(running.load() && is_connection) {
-		std::memset(buf, 0, BUFFSIZE);
-		if((read_state = read(client_socket, buf, BUFFSIZE)) > 0) {
-			std::cout << buf << std::endl;
-			size_t parsed;
-			bool is_parsed;
-			try {
-				is_parsed = parser.Parse(buf, BUFFSIZE, parsed);
-			}
-			catch(std::exception &e) {
-				if(write(client_socket, e.what(), strlen(e.what())) == -1) {
-					is_connection = false;
-				}
-			}
-			if(is_parsed) {
-				uint32_t body_size;
-				std::unique_ptr<Execute::Command> command;
-				if(command = parser.Build(body_size)) {
-					if(buf + parsed + body_size >= buf + BUFFSIZE) {
-						throw std::runtime_error("Buffer reading error");
-					}
-					const std::string args(buf + parsed, body_size);
-					std::string out;
-					try {
-						command->Execute(*pStorage, args, out);
-					}
-					catch(std::exception &e) {
-						out = "SERVER_ERROR: " + std::string(e.what()) + "\r\n";
-					}
-					catch(...) {
-						out = "SERVER_ERROR: unknown error\r\n";
-					}
-					if(write(client_socket, out.c_str(), out.size()) == -1) {
-						is_connection = false;
-					}
-				}
-				parser.Reset();
-			}
-		}
-		else if(read_state < 0) {
-			throw std::runtime_error("Client socket reading error");
-		}
-		else {
-			is_connection = false;
-		}
-	}
-	std::cout << "Connection closed\n";
-	close(client_socket);
+void ServerImpl::RunConnection() {
+    std::cout << "network debug: " << __PRETTY_FUNCTION__ << std::endl;
+    pthread_t self = pthread_self();
+
+    // Thread just spawn, register itself as a connection
+    {
+        std::unique_lock<std::mutex> __lock(connections_mutex);
+        connections.insert(self);
+    }
+
+    // TODO: All connection work is here
+
+    // Thread is about to stop, remove self from list of connections
+    // and it was the very last one, notify main thread
+    {
+        std::unique_lock<std::mutex> __lock(connections_mutex);
+        auto pos = connections.find(self);
+
+        assert(pos != connections.end());
+        connections.erase(pos);
+
+        if (connections.empty()) {
+            // Better to unlock before notify in order to let notified thread
+            // hold the mutex. Otherwise notification might be skipped
+            __lock.unlock();
+
+            // We are pretty sure that only ONE thread is waiting for connections
+            // queue to be empty - main thread
+            connections_cv.notify_one();
+        }
+    }
 }
 
 } // namespace Blocking
