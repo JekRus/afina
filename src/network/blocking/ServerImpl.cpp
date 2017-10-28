@@ -263,8 +263,7 @@ void ServerImpl::RunConnection(const int client_socket) {
 		std::memset(buffer, 0, BUFFSIZE);
 		if((read_count = read(client_socket, buffer, BUFFSIZE)) > 0) {
 			char * buf_p = buffer;
-			size_t parsed = 0;   
-			bool is_parsed = true;   
+			size_t parsed = 0;
 			try {
 				if(extra_args) {
 					size_t extra_size = body_size - args.size();
@@ -293,6 +292,7 @@ void ServerImpl::RunConnection(const int client_socket) {
 				}
 				
 				while(read_count - (buf_p - buffer) > 0) {
+					bool is_parsed;
 					is_parsed = parser.Parse(buf_p, read_count - (buf_p - buffer), parsed);
 					buf_p += parsed;
 					if(is_parsed) {
@@ -312,13 +312,20 @@ void ServerImpl::RunConnection(const int client_socket) {
 							else {
 								args = std::string(buf_p, buffer + BUFFSIZE - buf_p);
 								extra_args = true;
-								continue;
+								break;
 							}
 						}
 						else {
 							throw std::runtime_error("Parser error");
 						}
 						parser.Reset();
+						parsed = 0;
+					}
+					if(*buf_p == '\r') {
+						buf_p++;
+					}
+					if(*buf_p == '\n') {
+						buf_p++;
 					}
 				}
 			} catch (std::runtime_error &ex) {
