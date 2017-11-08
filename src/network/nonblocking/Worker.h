@@ -48,9 +48,17 @@ protected:
      * Method executing by background thread
      */
     void OnRun(void *args);
+    static void* Run_Thread(void *args);
+    void handle_connection(void *);
 
 private:
     pthread_t thread;
+};
+
+
+struct thread_args {
+	Worker *worker;
+	int server_socket;
 };
 
 } // namespace NonBlocking
