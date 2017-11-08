@@ -201,15 +201,7 @@ void ServerImpl::RunAcceptor() {
 
         // TODO: Start new thread and process data from/to connection
         {
-            auto it = connections.begin();
-            while (it != connections.end()) {
-                if (pthread_kill(*it, 0) != 0) {
-                    pthread_join(*it, 0);
-                    it = connections.erase(it);
-                } else {
-                    ++it;
-                }
-            }
+            
             if (connections.size() < max_workers) {
                 pthread_t thread;
                 Thread_args args{this, client_socket};
