@@ -75,7 +75,7 @@ private:
     // access only from inside of accept_thread
 
     std::unordered_set<pthread_t> connections;
-    
+
     int server_socket;
 };
 
