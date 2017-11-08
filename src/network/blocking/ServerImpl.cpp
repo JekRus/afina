@@ -205,10 +205,15 @@ void ServerImpl::RunAcceptor() {
             if (connections.size() < max_workers) {
                 pthread_t thread;
                 Thread_args args{this, client_socket};
-                if (pthread_create(&thread, NULL, ServerImpl::RunConnectionThread, &args) != 0 || pthread_detach(thread) != 0) {
+                if (pthread_create(&thread, NULL, ServerImpl::RunConnectionThread, &args) != 0) {
                     close(server_socket);
                     close(client_socket);
                     throw std::runtime_error("Could not create connection thread");
+                }
+                if (pthread_detach(thread) != 0) {
+                    close(server_socket);
+                    close(client_socket);
+                    throw std::runtime_error("Could not detach connection thread");
                 }
             } else {
                 std::cout << "Connections limit reached\n";
