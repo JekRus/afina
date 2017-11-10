@@ -256,7 +256,6 @@ void ServerImpl::RunConnection(const int client_socket) {
     while (running.load() && is_connection) {
         std::memset(buffer, 0, BUFFSIZE);
         if ((read_count = read(client_socket, buffer, BUFFSIZE)) > 0) {
-            std::cout << "r_c=" << read_count << std::endl;
             char *buf_p = buffer;
             size_t parsed = 0;
             try {
