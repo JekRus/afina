@@ -54,15 +54,7 @@ void ServerImpl::Start(uint32_t port, uint16_t n_workers) {
     if (server_socket == -1) {
         throw std::runtime_error("Failed to open socket");
     }
-
-    int opts = 1;
-    //set SO_REUSEPORT
-    if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT, &opts, sizeof(opts)) == -1) {
-        close(server_socket);
-        throw std::runtime_error("Socket setsockopt() failed");
-    }
-
-    if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+        if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
         close(server_socket);
         throw std::runtime_error("Socket bind() failed");
     }
@@ -74,22 +66,22 @@ void ServerImpl::Start(uint32_t port, uint16_t n_workers) {
     }
     */
     for (int i = 0; i < n_workers; i++) {
+
         int server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (server_socket == -1) {
             throw std::runtime_error("Failed to open socket");
         }
         int opts = 1;
-        //set SO_REUSEPORT
+        // set REUSEPORT
         if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT, &opts, sizeof(opts)) == -1) {
             close(server_socket);
             throw std::runtime_error("Socket setsockopt() failed");
         }
-    
         if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
             close(server_socket);
             throw std::runtime_error("Socket bind() failed");
         }
-    
+
         make_socket_non_blocking(server_socket);
         if (listen(server_socket, 5) == -1) {
             close(server_socket);

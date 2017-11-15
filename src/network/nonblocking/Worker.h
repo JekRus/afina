@@ -1,8 +1,9 @@
 #ifndef AFINA_NETWORK_NONBLOCKING_WORKER_H
 #define AFINA_NETWORK_NONBLOCKING_WORKER_H
 
-#include <memory>
+#include <atomic>
 #include <map>
+#include <memory>
 #include <pthread.h>
 #include <sys/epoll.h>
 
@@ -14,9 +15,9 @@ class Storage;
 namespace Network {
 namespace NonBlocking {
 
-
 class Connection_handler {
 public:
+    Connection_handler() = default;
     Connection_handler(int sock, std::shared_ptr<Afina::Storage> ps) : client_socket(sock), storage(ps) {}
     ~Connection_handler() {}
     void handle_connection(int epoll_fd, struct epoll_event event);
@@ -36,6 +37,7 @@ private:
 class Worker {
 public:
     Worker(std::shared_ptr<Afina::Storage> ps);
+    Worker(const Worker &);
     ~Worker();
 
     /**
@@ -64,20 +66,14 @@ protected:
      * Method executing by background thread
      */
     void OnRun(void *args);
-    static void* Run_Thread(void *args);
-    void handle_connection(int epoll_fd, struct epoll_event event);
+    static void *Run_Thread(void *args);
 
 private:
     pthread_t thread;
     int server_socket;
+    std::atomic<bool> running;
     std::shared_ptr<Afina::Storage> storage;
     std::map<int, Connection_handler> connections;
-};
-
-
-struct thread_args {
-	Worker *worker;
-	int server_socket;
 };
 
 } // namespace NonBlocking
