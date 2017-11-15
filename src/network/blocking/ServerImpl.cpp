@@ -257,17 +257,23 @@ void ServerImpl::RunConnection(const int client_socket) {
         std::memset(buffer, 0, BUFFSIZE);
         if ((read_count = read(client_socket, buffer, BUFFSIZE)) > 0) {
             char *buf_p = buffer;
+            if (*buf_p == '\r') {
+                buf_p++;
+            }
+            if (*buf_p == '\n') {
+                buf_p++;
+            }
             size_t parsed = 0;
             try {
                 if (extra_args) {
                     size_t extra_size = body_size - args.size();
-                    if (buf_p + extra_size <= buffer + BUFFSIZE) {
+                    if (buf_p + extra_size <= buffer + read_count) {
                         args.append(buf_p, extra_size);
                         buf_p += extra_size;
                         extra_args = false;
-                        read_count -= extra_size;
+                        //read_count -= extra_size;
                     } else {
-                        args.append(buf_p, BUFFSIZE);
+                        args.append(buf_p, read_count - (buf_p - buffer));
                         continue;
                     }
                     if (args.size() == body_size) {
@@ -282,6 +288,13 @@ void ServerImpl::RunConnection(const int client_socket) {
                         throw std::runtime_error("Arguments reading error");
                     }
                 }
+                
+                if (*buf_p == '\r') {
+					buf_p++;
+				}
+				if (*buf_p == '\n') {
+					buf_p++;
+				}
 
                 while (read_count - (buf_p - buffer) > 0) {
                     bool is_parsed;
@@ -289,7 +302,7 @@ void ServerImpl::RunConnection(const int client_socket) {
                     buf_p += parsed;
                     if (is_parsed) {
                         if (command = parser.Build(body_size)) {
-                            if (buf_p + body_size <= buffer + BUFFSIZE) {
+                            if (buf_p + body_size <= buffer + read_count) {
                                 args = std::string(buf_p, body_size);
                                 buf_p += body_size;
                                 std::string out;
@@ -302,7 +315,7 @@ void ServerImpl::RunConnection(const int client_socket) {
                             }
                             // not enough chars in buffer to get args for command
                             else {
-                                args = std::string(buf_p, buffer + BUFFSIZE - buf_p);
+								args = std::string(buf_p, buffer + read_count - buf_p);
                                 extra_args = true;
                                 break;
                             }
