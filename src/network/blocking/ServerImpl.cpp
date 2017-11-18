@@ -250,19 +250,13 @@ void ServerImpl::RunConnection(const int client_socket) {
     int read_count = 0;
     std::string args;
     std::unique_ptr<Execute::Command> command;
-    uint32_t body_size;
+    uint32_t body_size = 0;
     bool extra_args = false;
 
     while (running.load() && is_connection) {
         std::memset(buffer, 0, BUFFSIZE);
         if ((read_count = read(client_socket, buffer, BUFFSIZE)) > 0) {
             char *buf_p = buffer;
-            if (*buf_p == '\r') {
-                buf_p++;
-            }
-            if (*buf_p == '\n') {
-                buf_p++;
-            }
             size_t parsed = 0;
             try {
                 if (extra_args) {
@@ -271,7 +265,12 @@ void ServerImpl::RunConnection(const int client_socket) {
                         args.append(buf_p, extra_size);
                         buf_p += extra_size;
                         extra_args = false;
-                        //read_count -= extra_size;
+                        if(buf_p + 2 <= buffer + read_count && *buf_p == '\r' && *(buf_p + 1) == '\n') {
+							buf_p += 2;
+						} 
+						else {
+							throw std::runtime_error("Invalid chars. Expected \\r\\n");
+						}
                     } else {
                         args.append(buf_p, read_count - (buf_p - buffer));
                         continue;
@@ -288,14 +287,6 @@ void ServerImpl::RunConnection(const int client_socket) {
                         throw std::runtime_error("Arguments reading error");
                     }
                 }
-                
-                if (*buf_p == '\r') {
-					buf_p++;
-				}
-				if (*buf_p == '\n') {
-					buf_p++;
-				}
-
                 while (read_count - (buf_p - buffer) > 0) {
                     bool is_parsed;
                     is_parsed = parser.Parse(buf_p, read_count - (buf_p - buffer), parsed);
@@ -305,7 +296,15 @@ void ServerImpl::RunConnection(const int client_socket) {
                             if (buf_p + body_size <= buffer + read_count) {
                                 args = std::string(buf_p, body_size);
                                 buf_p += body_size;
-                                std::string out;
+                                if(body_size > 0) {
+									if(buf_p + 2 <= buffer + read_count && *buf_p == '\r' && *(buf_p + 1) == '\n') {
+										buf_p += 2;
+									} 
+									else {
+										throw std::runtime_error("Invalid chars. Expected \\r\\n");
+									}
+								}
+								std::string out;
                                 command->Execute(*pStorage, args, out);
                                 out += "\r\n";
                                 if (write(client_socket, out.c_str(), out.size()) == -1) {
@@ -324,12 +323,6 @@ void ServerImpl::RunConnection(const int client_socket) {
                         }
                         parser.Reset();
                         parsed = 0;
-                    }
-                    if (*buf_p == '\r') {
-                        buf_p++;
-                    }
-                    if (*buf_p == '\n') {
-                        buf_p++;
                     }
                 }
             } catch (std::runtime_error &ex) {

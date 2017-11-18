@@ -112,7 +112,6 @@ void Worker::OnRun(void *args) {
     if (epoll_ctl(ep_fd, EPOLL_CTL_ADD, server_socket, &ev) == -1) {
         throw std::runtime_error("epoll_ctl() error");
     }
-
     const int epoll_timeout = 100;
     while (true) {
         int nfds = epoll_wait(ep_fd, events.data(), maxevents, epoll_timeout);
@@ -189,6 +188,9 @@ void Connection_handler::handle_connection(int epoll_fd, struct epoll_event even
                         if (is_parsed + body_size <= msg_from.size()) {
                             std::string args = msg_from.substr(parsed, body_size);
                             msg_from.erase(0, parsed + body_size);
+                            if (msg_from.size() >= 2 && msg_from[0] == '\r' && msg_from[1] == '\n') {
+                                msg_from.erase(0, 2);
+                            }
                             std::string out;
                             command->Execute(*storage, args, out);
                             msg_to += out;
@@ -199,9 +201,11 @@ void Connection_handler::handle_connection(int epoll_fd, struct epoll_event even
                     }
                     parser.Reset();
                     parsed = 0;
+                    /*
                     if (!msg_from.empty() && msg_from[0] == '\r') {
                         msg_from.erase(0, 2);
                     }
+                    */
                 } else {
                     break;
                 }
