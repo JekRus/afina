@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <uv.h>
+#include <signal.h>
+#include <sys/signalfd.h>
+#include <sys/epoll.h>
+
 
 #include <cxxopts.hpp>
 
@@ -38,6 +42,30 @@ void signal_handler(uv_signal_t *handle, int signum) {
 void timer_handler(uv_timer_t *handle) {
     Application *pApp = static_cast<Application *>(handle->data);
     std::cout << "Start passive metrics collection" << std::endl;
+}
+
+// my signalfd handler
+void signalfd_handler(int &epoll_fd, const int maxevents) {
+    sigset_t sig_mask;
+    sigemptyset(&sig_mask);
+    sigaddset(&sig_mask, SIGPIPE);
+    sigaddset(&sig_mask, SIGINT);
+    sigaddset(&sig_mask, SIGTERM);
+    if (pthread_sigmask(SIG_BLOCK, &sig_mask, NULL) != 0) {
+        throw std::runtime_error("pthread_sigmask() error");
+    }
+    sigdelset(&sig_mask, SIGPIPE);
+    int sig_fd;
+    sig_fd = signalfd(-1, &sig_mask, SFD_NONBLOCK);
+    struct epoll_event ev;
+    if ((epoll_fd = epoll_create(maxevents)) == -1) {
+        throw std::runtime_error("Can not create epoll");
+    }
+    ev.events = EPOLLIN;
+    ev.data.fd = sig_fd;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sig_fd, &ev) == -1) {
+        throw std::runtime_error("epoll_ctl() error");
+    }
 }
 
 int main(int argc, char **argv) {
@@ -135,6 +163,7 @@ int main(int argc, char **argv) {
     // Init local loop. It will react to signals and performs some metrics collections. Each
     // subsystem is able to push metrics actively, but some metrics could be collected only
     // by polling, so loop here will does that work
+    /*
     uv_loop_t loop;
     uv_loop_init(&loop);
 
@@ -147,17 +176,45 @@ int main(int argc, char **argv) {
     uv_timer_init(&loop, &timer);
     timer.data = &app;
     uv_timer_start(&timer, timer_handler, 0, 5000);
-
+    */
     // Start services
     try {
+        int ep_fd;
+        const int maxevents = 20;
+        std::vector<struct epoll_event> events(maxevents);
+        signalfd_handler(ep_fd, maxevents);
+        
         app.storage->Start();
         app.server->Start(8080);
 
         // Freeze current thread and process events
         std::cout << "Application started" << std::endl;
-        uv_run(&loop, UV_RUN_DEFAULT);
+        //uv_run(&loop, UV_RUN_DEFAULT);
+        
+        bool running = true;
+        struct signalfd_siginfo sig_info;
+        const int epoll_timeout = 100;
+        while (running) {
+            int nfds = epoll_wait(ep_fd, events.data(), maxevents, epoll_timeout);
+            if (nfds == -1) {
+                throw std::runtime_error("epoll_wait() error");
+            }
+            for(int i = 0; i < nfds; ++i) {
+                int fd = events[i].data.fd;
+                int read_count = read(fd, &sig_info, sizeof(sig_info));
+                if(read_count == sizeof(sig_info) && (sig_info.ssi_signo == SIGINT || sig_info.ssi_signo == SIGTERM)) {
+                    //correct signal => shutdown server
+                    close(fd);
+                    running = false;
+                }
+                else {
+                    throw std::runtime_error("signal handle error");
+                }
+            }
+        }
 
         // Stop services
+        close(ep_fd);
         app.server->Stop();
         app.server->Join();
         app.storage->Stop();

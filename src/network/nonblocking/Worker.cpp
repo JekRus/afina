@@ -200,11 +200,6 @@ void Connection_handler::handle_connection(int epoll_fd, struct epoll_event even
                     }
                     parser.Reset();
                     parsed = 0;
-                    /*
-                    if (!msg_from.empty() && msg_from[0] == '\r') {
-                        msg_from.erase(0, 2);
-                    }
-                    */
                 } else {
                     break;
                 }

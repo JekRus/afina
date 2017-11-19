@@ -36,13 +36,14 @@ void ServerImpl::Start(uint32_t port, uint16_t n_workers) {
     // If a client closes a connection, this will generally produce a SIGPIPE
     // signal that will kill the process. We want to ignore this signal, so send()
     // just returns -1 when this happens.
+    /*
     sigset_t sig_mask;
     sigemptyset(&sig_mask);
     sigaddset(&sig_mask, SIGPIPE);
     if (pthread_sigmask(SIG_BLOCK, &sig_mask, NULL) != 0) {
         throw std::runtime_error("Unable to mask SIGPIPE");
     }
-
+    */
     // Create server socket
     struct sockaddr_in server_addr;
     std::memset(&server_addr, 0, sizeof(server_addr));
