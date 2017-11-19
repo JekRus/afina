@@ -174,8 +174,7 @@ void Connection_handler::handle_connection(int epoll_fd, struct epoll_event even
         int read_count = 0;
         while ((read_count = read(client_socket, buffer, BUFFSIZE)) > 0) {
             msg_from += std::string(buffer, read_count);
-			std::cout << "msg_from: " << msg_from << std::endl;
-        }
+		}
         size_t parsed = 0;
         try {
             while (msg_from.size() > 0) {
