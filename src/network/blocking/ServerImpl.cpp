@@ -76,7 +76,7 @@ void ServerImpl::Start(uint32_t port, uint16_t n_workers) {
     if (pthread_sigmask(SIG_BLOCK, &sig_mask, NULL) != 0) {
         throw std::runtime_error("Unable to mask SIGPIPE");
     }
-	*/
+        */
     // Setup server parameters BEFORE thread created, that will guarantee
     // variable value visibility
     max_workers = n_workers;
@@ -202,7 +202,7 @@ void ServerImpl::RunAcceptor() {
 
         // TODO: Start new thread and process data from/to connection
         {
-            
+
             if (connections.size() < max_workers) {
                 pthread_t thread;
                 Thread_args args{this, client_socket};
@@ -266,12 +266,11 @@ void ServerImpl::RunConnection(const int client_socket) {
                         args.append(buf_p, extra_size);
                         buf_p += extra_size;
                         extra_args = false;
-                        if(buf_p + 2 <= buffer + read_count && *buf_p == '\r' && *(buf_p + 1) == '\n') {
-							buf_p += 2;
-						} 
-						else {
-							throw std::runtime_error("Invalid chars. Expected \\r\\n");
-						}
+                        if (buf_p + 2 <= buffer + read_count && *buf_p == '\r' && *(buf_p + 1) == '\n') {
+                            buf_p += 2;
+                        } else {
+                            throw std::runtime_error("Invalid chars. Expected \\r\\n");
+                        }
                     } else {
                         args.append(buf_p, read_count - (buf_p - buffer));
                         continue;
@@ -297,15 +296,14 @@ void ServerImpl::RunConnection(const int client_socket) {
                             if (buf_p + body_size <= buffer + read_count) {
                                 args = std::string(buf_p, body_size);
                                 buf_p += body_size;
-                                if(body_size > 0) {
-									if(buf_p + 2 <= buffer + read_count && *buf_p == '\r' && *(buf_p + 1) == '\n') {
-										buf_p += 2;
-									} 
-									else {
-										throw std::runtime_error("Invalid chars. Expected \\r\\n");
-									}
-								}
-								std::string out;
+                                if (body_size > 0) {
+                                    if (buf_p + 2 <= buffer + read_count && *buf_p == '\r' && *(buf_p + 1) == '\n') {
+                                        buf_p += 2;
+                                    } else {
+                                        throw std::runtime_error("Invalid chars. Expected \\r\\n");
+                                    }
+                                }
+                                std::string out;
                                 command->Execute(*pStorage, args, out);
                                 out += "\r\n";
                                 if (write(client_socket, out.c_str(), out.size()) == -1) {
@@ -315,7 +313,7 @@ void ServerImpl::RunConnection(const int client_socket) {
                             }
                             // not enough chars in buffer to get args for command
                             else {
-								args = std::string(buf_p, buffer + read_count - buf_p);
+                                args = std::string(buf_p, buffer + read_count - buf_p);
                                 extra_args = true;
                                 break;
                             }
