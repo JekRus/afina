@@ -78,7 +78,6 @@ void Worker::Stop() {
 void Worker::Join() {
     std::cout << "network debug: " << __PRETTY_FUNCTION__ << std::endl;
     // TODO: implementation here
-    pthread_cancel(thread);
     if (pthread_join(thread, nullptr) != 0) {
         throw std::runtime_error("error at Worker::Join()");
     }
@@ -113,16 +112,12 @@ void Worker::OnRun(void *args) {
         throw std::runtime_error("epoll_ctl() error");
     }
     const int epoll_timeout = 100;
-    while (true) {
+    while (running.load()) {
         int nfds = epoll_wait(ep_fd, events.data(), maxevents, epoll_timeout);
         if (nfds == -1) {
             throw std::runtime_error("epoll_wait() error");
         } else if (nfds == 0) {
-            if (running.load() == false) {
-                return;
-            } else {
-                continue;
-            }
+            continue;
         }
         for (int i = 0; i < nfds; i++) {
             if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP)) {
@@ -158,6 +153,12 @@ void Worker::OnRun(void *args) {
             }
         }
     }
+    for (auto &connection : connections) {
+        int fd = connection.first;
+        close(fd);
+    }
+    close(server_socket);
+    return;
 }
 
 void Connection_handler::handle_connection(int epoll_fd, struct epoll_event event) {
