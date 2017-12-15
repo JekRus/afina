@@ -15,6 +15,7 @@ namespace Afina {
  * # Thread pool
  */
 class Executor {
+public:
     enum class State {
         // Threadpool is fully operational, tasks could be added and get executed
         kRun,
@@ -49,7 +50,7 @@ class Executor {
         // Prepare "task"
         auto exec = std::bind(std::forward<F>(func), std::forward<Types>(args)...);
 
-        std::unique_lock<std::mutex> lock(this->mutex);
+        std::unique_lock<std::mutex> lock(this->state_mutex);
         if (state != State::kRun) {
             return false;
         }
@@ -75,13 +76,14 @@ private:
     /**
      * Mutex to protect state below from concurrent modification
      */
-    std::mutex mutex;
+    std::mutex state_mutex;
+    std::mutex queue_mutex;
 
     /**
      * Conditional variable to await new data in case of empty queue
      */
     std::condition_variable empty_condition;
-
+    //bool notified;
     /**
      * Vector of actual threads that perorm execution
      */
