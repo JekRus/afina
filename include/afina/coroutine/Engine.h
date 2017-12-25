@@ -117,11 +117,11 @@ public:
         // Start routine execution
         void *pc = run(main, std::forward<Ta>(args)...);
         idle_ctx = new context();
-        if(pc != nullptr) {
+        if (pc != nullptr) {
             Store(*idle_ctx);
             cur_routine = idle_ctx;
             sched(pc);
-            while(alive != nullptr) {
+            while (alive != nullptr) {
                 yield();
             }
         }

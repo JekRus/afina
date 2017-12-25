@@ -1,7 +1,7 @@
 #include <afina/coroutine/Engine.h>
 
-#include <stdexcept>
 #include <setjmp.h>
+#include <stdexcept>
 #include <stdio.h>
 #include <string.h>
 
@@ -33,28 +33,26 @@ void Engine::yield() {
     if (this->StackBottom == 0) {
         return;
     }
-    if(cur_routine == nullptr) {
+    if (cur_routine == nullptr) {
         throw std::runtime_error("Engine::yield error");
     }
-    //if alive is nullptr then all corutines are done and we have to return
-    //to the Engine::Start
-    //if there is no corutines except caller => return to caller
-    if(alive == nullptr) {
+    // if alive is nullptr then all corutines are done and we have to return
+    // to the Engine::Start
+    // if there is no corutines except caller => return to caller
+    if (alive == nullptr) {
         return;
     }
-    context* routine;
-    if(alive == cur_routine) {
-        if(alive->next != nullptr) {
+    context *routine;
+    if (alive == cur_routine) {
+        if (alive->next != nullptr) {
             routine = alive->next;
-        }
-        else {
+        } else {
             return;
         }
-    }
-    else {
+    } else {
         routine = alive;
     }
-    //new routine is chosen, now start it
+    // new routine is chosen, now start it
     if (setjmp(cur_routine->Environment) > 0) {
         return;
     } else {
@@ -68,11 +66,11 @@ void Engine::sched(void *routine_) {
     if (this->StackBottom == 0) {
         return;
     }
-    if(cur_routine == nullptr) {
+    if (cur_routine == nullptr) {
         throw std::runtime_error("Engine::sched error");
     }
-    //if new routine not specified => return to caller
-    if(routine_ == nullptr) {
+    // if new routine not specified => return to caller
+    if (routine_ == nullptr) {
         return;
     }
     if (setjmp(cur_routine->Environment) > 0) {
