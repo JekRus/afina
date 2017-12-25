@@ -117,16 +117,16 @@ public:
         // Start routine execution
         void *pc = run(main, std::forward<Ta>(args)...);
         idle_ctx = new context();
-
-        if (setjmp(idle_ctx->Environment) > 0) {
-            // Here: correct finish of the coroutine section
-            yield();
-        } else if (pc != nullptr) {
+        if(pc != nullptr) {
             Store(*idle_ctx);
+            cur_routine = idle_ctx;
             sched(pc);
+            while(alive != nullptr) {
+                yield();
+            }
         }
-
         // Shutdown runtime
+        delete[] std::get<0>(idle_ctx->Stack);
         delete idle_ctx;
         this->StackBottom = 0;
     }
@@ -153,7 +153,6 @@ public:
 
             // invoke routine
             func(std::forward<Ta>(args)...);
-
             // Routine has completed its execution, time to delete it. Note that we should be extremely careful in where
             // to pass control after that. We never want to go backward by stack as that would mean to go backward in
             // time. Function run() has already return once (when setjmp returns 0), so return second return from run
@@ -173,12 +172,14 @@ public:
             // current coroutine finished, and the pointer is not relevant now
             cur_routine = nullptr;
             pc->prev = pc->next = nullptr;
-            delete std::get<0>(pc->Stack);
+            delete[] std::get<0>(pc->Stack);
             delete pc;
 
             // We cannot return here, as this function "returned" once already, so here we must select some other
             // coroutine to run. As current coroutine is completed and can't be scheduled anymore, it is safe to
             // just give up and ask scheduler code to select someone else, control will never returns to this one
+
+            cur_routine = idle_ctx;
             Restore(*idle_ctx);
         }
 
