@@ -9,9 +9,9 @@ namespace Afina {
 namespace Coroutine {
 
 void Engine::Store(context &ctx) {
-    volatile char cur_stack;
+    char cur_stack;
     ctx.Hight = StackBottom;
-    ctx.Low = (char *)&cur_stack;
+    ctx.Low = static_cast<char *>(&cur_stack);
     int size = ctx.Hight - ctx.Low;
     std::get<1>(ctx.Stack) = size;
     delete[] std::get<0>(ctx.Stack);
@@ -20,8 +20,8 @@ void Engine::Store(context &ctx) {
 }
 
 void Engine::Restore(context &ctx) {
-    volatile char cur_stack = 0;
-    if ((char *)&cur_stack > StackBottom - std::get<1>(ctx.Stack)) {
+    char cur_stack;
+    if (static_cast<char *>(&cur_stack) > StackBottom - std::get<1>(ctx.Stack)) {
         char a[100];
         Restore(ctx);
     }
